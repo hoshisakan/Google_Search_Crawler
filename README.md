@@ -33,8 +33,10 @@ Browser_Type=chrome
 
 * 撈取一個 (以上) 不同類型的 Google Search 之結果
 * 引數化指定 ini 設定檔的所在目錄
+* [crawler_google_search_args.py](https://github.com/hoshisakan/Google_Search_Crawler/blob/main/crawler_google_search_args.py) 這個檔案也已經放在 Gitgub 專案目錄上，需要可自行取用
+
 ```
-python crawler_google_search.py -i [ini 設定檔的所在目錄]
+python crawler_google_search_args.py -i [ini 設定檔的所在目錄]
 ```
 > 若想要了解引數的作用，可輸入 python crawler_google_search.py --help 查看
 ```
@@ -52,8 +54,10 @@ optional arguments:
 ### 輸出資料夾
 ![alt text](https://imgur.com/M6n28QG.png)
 
-* 將 python 打包成一個 .exe 的可執行檔
-> 打包時請注意你的 python 環境是乾淨的，避免製作執行檔時將不必要的套件一同匯入，建議使用 [virtualenv](https://pypi.org/project/virtualenv/) 與 [virtualenvwrapper-win](https://pypi.org/project/virtualenvwrapper-win/) 將爬蟲的開發環境區別開來
+### 將 python 打包成一個 .exe 的可執行檔
+> 打包的 python 檔是 [crawler_google_search.py](https://github.com/hoshisakan/Google_Search_Crawler/blob/main/crawler_google_search.py) 這個檔案，而非 [crawler_google_search_args.py](https://github.com/hoshisakan/Google_Search_Crawler/blob/main/crawler_google_search_args.py)，這點要特別注意
+* 打包時請注意你的 python 環境是乾淨的，避免製作執行檔時將不必要的套件一同匯入，建議使用 [virtualenv](https://pypi.org/project/virtualenv/) 與 [virtualenvwrapper-win](https://pypi.org/project/virtualenvwrapper-win/) 將爬蟲的開發環境區別開來
+
 
 ```
 pyinstaller.exe --specpath ./execute/ --distpath ./execute/dist --workpath ./execute/build --add-data "D:\Files\Project\Google_Search_Crawler\crawler.ini;." -D crawler_google_search.py
