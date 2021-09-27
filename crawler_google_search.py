@@ -102,11 +102,11 @@ class GoogleSearchInfo():
                         one_of_card_div_tag = current_g_card_element.find('div', {'class': 'iRPxbe'})
                         if one_of_card_div_tag is not None:
                             newspaper_div_tag = one_of_card_div_tag.find('div', {'class': 'CEMjEf'})
-                            newspaper = newspaper_div_tag.get_text().strip().replace('\n\r', '') if newspaper_div_tag is not None else ''
+                            newspaper = newspaper_div_tag.get_text().strip().replace('\n', '') if newspaper_div_tag is not None else ''
                             title_div_tag = one_of_card_div_tag.find('div', { 'class', 'mCBkyc JQe2Ld nDgy9d' })
-                            title = title_div_tag.get_text().strip().replace('\n\r', '') if title_div_tag is not None else ''
+                            title = title_div_tag.get_text().strip().replace('\n', '') if title_div_tag is not None else ''
                             summary_div_tag = one_of_card_div_tag.find('div', { 'class': 'GI74Re nDgy9d' })
-                            summary = summary_div_tag.get_text().strip().replace('\n\r', '') if summary_div_tag is not None else ''
+                            summary = summary_div_tag.get_text().strip().replace('\n', '') if summary_div_tag is not None else ''
                             update_time_div_tag = one_of_card_div_tag.find('div', { 'class': 'ZE0LJd iuBdze' })
                             update_time = update_time_div_tag.find('p', { 'class': 'S1FAPd ecEXdc' }).get_text().strip().replace('\n\r', '') if update_time_div_tag is not None else ''
                             link_a_tag = current_g_card_element.find('a')
