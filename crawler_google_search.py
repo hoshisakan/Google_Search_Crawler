@@ -14,6 +14,8 @@ from module.date import DateTimeTools as DT
 import re
 import pandas as pd
 import configparser
+import numpy as np
+
 
 
 logger = Loggings()
@@ -108,7 +110,8 @@ class GoogleSearchInfo():
                             summary_div_tag = one_of_card_div_tag.find('div', { 'class': 'GI74Re nDgy9d' })
                             summary = summary_div_tag.get_text().strip().replace('\n', '') if summary_div_tag is not None else ''
                             update_time_div_tag = one_of_card_div_tag.find('div', { 'class': 'ZE0LJd iuBdze' })
-                            update_time = update_time_div_tag.find('p', { 'class': 'S1FAPd ecEXdc' }).get_text().strip().replace('\n\r', '') if update_time_div_tag is not None else ''
+                            update_time_p_tag = update_time_div_tag.find('p', { 'class': 'S1FAPd ecEXdc' }) if update_time_div_tag is not None else None
+                            update_time = update_time_p_tag.get_text().strip().replace('\n\r', '') if update_time_p_tag is not None else ''
                             link_a_tag = current_g_card_element.find('a')
                             link = link_a_tag['href'] if link_a_tag is not None else ''
                             temp_list = [title, summary, update_time, link, newspaper, page_count]
@@ -174,6 +177,11 @@ class GoogleSearchInfo():
 
     def __get_shopping(self, page_source_list):
         info = []
+        all_commodities_main_div_dict = {
+            'grid': 'v7W49e',
+            'list': 'QNox7c'
+        }
+
         try:
             logger.info(f'Will load source page total: {len(page_source_list)}')
             info_columns = ['name', 'price', 'platform', 'free shipping option', 'url', 'search_page']
@@ -186,50 +194,65 @@ class GoogleSearchInfo():
 
                 with AnalysisData(page_source, 'html.parser') as soup:
                     search_div_tag = soup.find('div', {'id': 'search'})
-                    commodities_div_tag = search_div_tag.find('div', {'class': 'v7W49e'}) if search_div_tag is not None else None
-                    find_grid_tag = False
-                    
-                    all_commodities_div_grid_tag = commodities_div_tag.find_all('div', {'class': 'sh-dgr__gr-auto sh-dgr__grid-result'}) if commodities_div_tag is not None else None
-                    
-                    if all_commodities_div_grid_tag is not None and any(all_commodities_div_grid_tag) is True:
-                        logger.info(f'find grid element')
-                        all_commodities_div_tag = all_commodities_div_grid_tag
-                        find_grid_tag = True
-                    else:
-                        logger.info('find list element')
-                        all_commodities_div_tag = commodities_div_tag.find_all('div', {'class': 'sh-dlr__content xal5Id'}) if commodities_div_tag is not None else None
-                        find_grid_tag = False
+                    find_target_key = ''
 
-                    if all_commodities_div_tag is None or any(all_commodities_div_tag) is False:
-                        logger.error(f'No div tag found: {all_commodities_div_tag}')
-                        # raise Exception('No div tag found')
-                        pass
-                    elif all_commodities_div_tag is not None and find_grid_tag is True:
-                        logger.info(f'all commodities count: {len(all_commodities_div_tag)}')
-                        for current_page_commodity_count, current_commodity_tag in enumerate(all_commodities_div_tag, 1):
-                            commodity_top_div = current_commodity_tag.find('div', {'class': 'i0X6df'})
-                            commodity_inner_div = commodity_top_div.find('div', {'class': 'sh-dgr__content'}) if commodity_top_div is not None else None
-                            commodity_name_and_link_tag = commodity_inner_div.find('span', {'class': 'C7Lkve'}) if commodity_inner_div is not None else None
-                            commodity_first_a_tag = commodity_name_and_link_tag.find('a', {'class': 'Lq5OHe eaGTj translate-content'}) if commodity_name_and_link_tag is not None else None
-                            commodity_name_tag = commodity_first_a_tag.find('h4', {'class': 'Xjkr3b'}) if commodity_first_a_tag is not None else None
-                            commodity_name = commodity_name_tag.getText() if commodity_name_tag is not None else ''
-                            # commodity_link = self.__base_url.strip('/') + commodity_first_a_tag['href'] if commodity_first_a_tag is not None else ''
-                            commodity_other_items_tag = commodity_inner_div.find('div', {'class': 'zLPF4b'}) if commodity_inner_div is not None else None
-                            commodity_second_a_tag = commodity_other_items_tag.find('a', {'class': 'eaGTj mQaFGe shntl'}) if commodity_other_items_tag is not None else None
-                            commodity_link = self.__base_url.strip('/') + commodity_second_a_tag['href'] if commodity_second_a_tag is not None else ''
-                            # commodity_price = commodity_second_a_tag.find('span', {'class': 'a8Pemb OFFNJ'}).getText().replace('.00', '').replace(',', '').strip('NT$').strip('$') if commodity_second_a_tag is not None else ''
-                            commodity_price = self.__filter_duplicate_items('[.00|,|NT$|$| + tax]', commodity_second_a_tag.find('span', {'class': 'a8Pemb OFFNJ'}).getText()) if commodity_second_a_tag is not None else ''
-                            commodity_buy_platform = commodity_other_items_tag.find('div', {'class': 'aULzUe IuHnof'}).getText() if commodity_other_items_tag is not None else ''
-                            commodity_free_shipping_option = commodity_other_items_tag.find('div', {'class': 'bONr3b'}).getText() if commodity_other_items_tag is not None else ''
-                            temp_list = [commodity_name, commodity_price, commodity_buy_platform, commodity_free_shipping_option, commodity_link, page_count]
-                            if any(temp_list) is True:
-                                current_info_dict.append(dict(zip(info_columns, temp_list)))
+                    if search_div_tag is not None:
+                        for tag_key, tag_val in all_commodities_main_div_dict.items():
+                            commodities_div_tag = search_div_tag.find('div', {'class': tag_val})
+                            if commodities_div_tag is not None:
+                                find_target_key = tag_key
+                                break
+                    else:
+                        raise ValueError("Search page load failed, please check element valid.")
+
+                    # logger.debug(search_div_tag)
+
+                    if commodities_div_tag is None:
+                        raise ValueError("Not found any commodities main div tag.")
+
+                    all_commodities_inner_div_dict = {
+                        'grid': 'sh-pr__product-results-grid sh-pr__product-results',
+                        'list': 'sh-sr__shop-result-group Qlx7of BXIkFb'
+                    }
+                    all_commodities_top_div_tag = commodities_div_tag.find('div', {'class': all_commodities_inner_div_dict[find_target_key]})
+                    # logger.debug(all_commodities_top_div_tag)
+
+                    if not find_target_key or all_commodities_top_div_tag is None or any(all_commodities_top_div_tag) is False:
+                        logger.error(f'No div tag found: {all_commodities_top_div_tag}')
+                    elif find_target_key and find_target_key == 'grid':
+                        logger.warning('load grid tag.')
+                        all_commodities_inner_div_tag = all_commodities_top_div_tag.find_all('div', {'class': 'i0X6df'})
+                        # logger.info(f'all commodities inner div tag list count: {len(all_commodities_inner_div_tag)}')
+                        # logger.debug(all_commodities_inner_div_tag)
+                        for current_page_commodity_count, current_commodity_tag in enumerate(all_commodities_inner_div_tag, 1):
+                            commodity_inner_div = current_commodity_tag.find('div', {'class': 'sh-dgr__content'})
+                            # logger.debug(commodity_inner_div)
+                            if commodity_inner_div is not None:
+                                commodity_name_and_link_tag = commodity_inner_div.find('span', {'class': 'C7Lkve'})
+                                commodity_first_a_tag = commodity_name_and_link_tag.find('a', {'class': 'Lq5OHe eaGTj translate-content'})
+                                commodity_name_tag = commodity_first_a_tag.find('h4', {'class': 'Xjkr3b'})
+                                commodity_name = commodity_name_tag.getText() if commodity_name_tag is not None else ''
+                                commodity_other_items_tag = commodity_inner_div.find('div', {'class': 'zLPF4b'})
+                                commodity_link_span_tag = commodity_other_items_tag.find('span', {'class': 'eaGTj mQaFGe shntl'})
+                                # logger.warning(commodity_link_span_tag)
+                                commodity_link = self.__base_url.strip('/') + commodity_link_span_tag.find('a', {'class': 'shntl'})['href'] if commodity_link_span_tag is not None else 'null'
+                                commodity_price = self.__filter_duplicate_items('[.00|,|NT$|$| + tax]', commodity_inner_div.find('span', {'class': 'a8Pemb OFFNJ'}).getText())
+                                commodity_buy_platform = commodity_other_items_tag.find('div', {'class': 'aULzUe IuHnof'}).getText() if commodity_other_items_tag is not None else ''
+                                commodity_free_shipping_option = commodity_other_items_tag.find('div', {'class': 'bONr3b'}).getText() if commodity_other_items_tag is not None else ''
+
+                                temp_list = [commodity_name, commodity_price, commodity_buy_platform, commodity_free_shipping_option, commodity_link, page_count]
+                                if any(temp_list) is True:
+                                    current_info_dict.append(dict(zip(info_columns, temp_list)))
+                                else:
+                                    logger.error(f'Found empty in current page {page_count} the {current_page_commodity_count} data')
                             else:
-                                logger.error(f'Found empty in current page {page_count} the {current_page_commodity_count} data')
+                                logger.error(f'not found any commodities info.')
                         info.extend(list({v['name']:v for v in current_info_dict}.values()))
-                    elif all_commodities_div_tag is not None and find_grid_tag is False:
-                        logger.info(f'all commodities count: {len(all_commodities_div_tag)}')
-                        for current_page_commodity_count, current_commodity_tag in enumerate(all_commodities_div_tag, 1):
+                    elif find_target_key and find_target_key == 'list':
+                        logger.warning('load list tag.')
+                        all_commodities_inner_div_tag = all_commodities_top_div_tag.find_all('div', {'class': 'ZGFjDb'})
+                        logger.info(f'all commodities inner div tag list count: {len(all_commodities_inner_div_tag)}')
+                        for current_page_commodity_count, current_commodity_tag in enumerate(all_commodities_inner_div_tag[1:], 1):
                             commodity_inner_div = current_commodity_tag.find('div', {'class': 'ZGFjDb'})
                             commodity_name_and_link_tag = commodity_inner_div.find('div', {'class': 'LNwFVe'}) if commodity_inner_div is not None else None
                             commodity_first_a_tag = commodity_name_and_link_tag.find('a', {'class': 'VZTCjd translate-content'}) if commodity_name_and_link_tag is not None else None
@@ -252,10 +275,13 @@ class GoogleSearchInfo():
                                 current_info_dict.append(dict(zip(info_columns, temp_list)))
                             else:
                                 logger.error(f'Found empty in current page {page_count} the {current_page_commodity_count} data')
-                            # logger.info(f'Commodity name is: {commodity_name}\nCommodity link is: {commodity_link}')
-                            # logger.info('-------------------------------------------------------')
+                            logger.info(f'Commodity name is: {commodity_name}\nCommodity link is: {commodity_link}')
+                            logger.info('-------------------------------------------------------')
                         info.extend(list({v['name']:v for v in current_info_dict}.values()))
-            logger.info("Finish get shopping information from page source")
+                    else:
+                        logger.info('other state')
+            info = sorted(info, key=lambda x: x['search_page'], reverse=False)
+            logger.info(f"Finish get shopping information from {find_target_key} of page source")
         except Exception as e:
             logger.error(HandleException.show_exp_detail_message(e))
         return info
@@ -284,7 +310,11 @@ class GoogleSearchInfo():
                 else:
                     raise Exception("Not mathch search type option.")
 
-                d.get(f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}&hl={country_code_list[0]}')
+                # d.get(f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}&hl={country_code_list[0]}')
+                search_condition = f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}&hl={country_code_list[0]}'
+                # search_condition = f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}'
+                logger.debug(f'search condition: {search_condition}')
+                d.get(search_condition)
 
                 page_source_list.append(d.page_source)
                 logger.info(f'Load 1 page source finish')
@@ -292,7 +322,7 @@ class GoogleSearchInfo():
                 for _ in range(0, self.__page_count - 1):
                     next_page_button = self.__wait_element_load_for_clickable(
                         driver=d,
-                        locator=(By.XPATH, "/html/body[@id='gsr']/div[@id='main']/div[@id='cnt']/div[@id='rcnt']/div[@class='D6j0vc']/div[@id='center_col']/div[6]/span[@id='xjs']/table[@class='AaVjTc']/tbody/tr/td[@class='d6cvqb'][2]/a[@id='pnnext']/span[2]"),
+                        locator=(By.XPATH, "//*[@id='pnnext']/span[2]"),
                         wait_time=10,
                         check_time=1)
                     next_page_button.click()
@@ -369,4 +399,9 @@ def run_job():
         job.join()
 
 if __name__ == '__main__':
-    run_job()
+    try:
+        run_job()
+    except Exception as e:
+        logger.error(HandleException.show_exp_detail_message(e))
+    except KeyboardInterrupt:
+        os._exit(0)
