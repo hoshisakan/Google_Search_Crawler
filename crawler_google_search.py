@@ -310,7 +310,6 @@ class GoogleSearchInfo():
                 else:
                     raise Exception("Not mathch search type option.")
 
-                # d.get(f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}&hl={country_code_list[0]}')
                 search_condition = f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}&hl={country_code_list[0]}'
                 # search_condition = f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}'
                 logger.debug(f'search condition: {search_condition}')
