@@ -4,7 +4,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from module.handle_exception import HandleException
 from module.reptile import Automation, AnalysisData
 from selenium.webdriver.support.wait import WebDriverWait
-# from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from instance.config import Initialization as Init
@@ -45,7 +44,7 @@ class GoogleSearchInfo():
     """
         :Parameters:
             keyword: The Google search keyword.
-            search type: news, video, shopping,
+            search type: news, video
             page count: The Google search get info page count
     """
     def __init__(self, keyword, search_type, page_count):
@@ -82,6 +81,7 @@ class GoogleSearchInfo():
     def __filter_duplicate_items(self, filter_condition, filter_items):
         return re.sub(filter_condition, '', filter_items)
 
+    #TODO 獲取 Google 搜尋的新聞資訊
     def __get_news(self, page_source_list):
         info = []
         try:
@@ -100,18 +100,25 @@ class GoogleSearchInfo():
                         news_all_g_card_element = search_div_tag.find_all('g-card')
                     else:
                         raise Exception('No hot news div tag found')
+                    #TODO 迭代獲取當前頁面的每一筆新聞資訊
                     for current_page_news_count, current_g_card_element in enumerate(news_all_g_card_element, 1):
+                        #TODO 獲取當前第 n 筆的新聞資訊
                         one_of_card_div_tag = current_g_card_element.find('div', {'class': 'iRPxbe'})
                         if one_of_card_div_tag is not None:
-                            newspaper_div_tag = one_of_card_div_tag.find('div', {'class': 'CEMjEf'})
+                            #TODO 獲取新聞社名稱
+                            newspaper_div_tag = one_of_card_div_tag.find('div', {'class': 'CEMjEf NUnG9d'})
                             newspaper = newspaper_div_tag.get_text().strip().replace('\n', '') if newspaper_div_tag is not None else ''
-                            title_div_tag = one_of_card_div_tag.find('div', { 'class', 'mCBkyc JQe2Ld nDgy9d' })
+                            #TODO 獲取標題名稱
+                            title_div_tag = one_of_card_div_tag.find('div', { 'class', 'mCBkyc y355M JQe2Ld nDgy9d' })
                             title = title_div_tag.get_text().strip().replace('\n', '') if title_div_tag is not None else ''
+                            #TODO 獲取簡介內容
                             summary_div_tag = one_of_card_div_tag.find('div', { 'class': 'GI74Re nDgy9d' })
                             summary = summary_div_tag.get_text().strip().replace('\n', '') if summary_div_tag is not None else ''
-                            update_time_div_tag = one_of_card_div_tag.find('div', { 'class': 'ZE0LJd iuBdze' })
-                            update_time_p_tag = update_time_div_tag.find('p', { 'class': 'S1FAPd ecEXdc' }) if update_time_div_tag is not None else None
-                            update_time = update_time_p_tag.get_text().strip().replace('\n\r', '') if update_time_p_tag is not None else ''
+                            #TODO 獲取新聞資訊更新的時間
+                            update_time_div_tag = one_of_card_div_tag.find('div', { 'class': 'OSrXXb ZE0LJd' })
+                            update_time = update_time_div_tag.find('span').get_text().strip()
+                            
+                            #TODO 獲取資訊連結
                             link_a_tag = current_g_card_element.find('a')
                             link = link_a_tag['href'] if link_a_tag is not None else ''
                             temp_list = [title, summary, update_time, link, newspaper, page_count]
@@ -128,6 +135,7 @@ class GoogleSearchInfo():
             logger.error(HandleException.show_exp_detail_message(e))
         return info
 
+    #TODO 獲取 Google 搜尋的影片資訊
     def __get_video(self, page_source_list):
         info = []
         try:
@@ -141,29 +149,37 @@ class GoogleSearchInfo():
                 with AnalysisData(page_source, 'html.parser') as soup:
                     search_div_tag = soup.find('div', {'id': 'search'})
                     video_main_div_tag = search_div_tag.find('div', {'class': 'v7W49e'}) if page_count > 0 and search_div_tag is not None or not search_div_tag else None
-                    all_video_div_tag = video_main_div_tag.find_all('div', {'class': 'g'}) if video_main_div_tag is not None or not video_main_div_tag else None
-                    if all_video_div_tag is None:
+                    if video_main_div_tag is None:
                         raise Exception('Not found any match video div tag')
                     else:
-                        for current_page_video_count, current_video_items in enumerate(all_video_div_tag, 1):
-                            video_items_outer_div_tag = current_video_items.find('div', {'class': 'tF2Cxc'})
-                            title_h3_tag = video_items_outer_div_tag.find('div', { 'class': 'yuRUbf' }).find('a').find('h3', {'class': 'LC20lb DKV0Md'}) if video_items_outer_div_tag is not None else ''
-                            title = title_h3_tag.getText().strip().replace('\n\r', '') if title_h3_tag is not None else ''
-                            # logger.info(f'Current page {current_page_video_count} the title is: {title}')
-                            video_items_inner_div_tag = current_video_items.find('div', {'class': 'IsZvec'})
-                            video_a_tag_class_div = video_items_inner_div_tag.find('div', {'class': 'N3nEGc'})
-                            video_a_tag = video_a_tag_class_div.find('a') if video_a_tag_class_div is not None else None
-                            link = video_a_tag['href'] if video_a_tag is not None else ''
-                            # image_g_img_tag = video_a_tag.find('g-img').find('img')
-                            # image_src_link = image_g_img_tag['src'] if image_g_img_tag is not None else ''
-                            video_time_div_tag = video_a_tag.find('div', {'class': 'ij69rd UHe5G'}) if video_a_tag is not None else None
-                            video_time = video_time_div_tag.getText() if video_time_div_tag is not None else ''
-                            summary_span_tag = video_items_inner_div_tag.find('span', {'class': 'aCOpRe'})
-                            summary = summary_span_tag.getText().strip().replace('\n\r', '')if summary_span_tag is not None else ''
-                            update_time_and_uploader_div_tag = video_items_inner_div_tag.find('div', {'class': 'fG8Fp uo4vr'})
-                            update_time_and_uploader_list = update_time_and_uploader_div_tag.getText().strip().replace(' ', '').replace('上傳者：', '').replace('Uploadedby', '').split('·') if update_time_and_uploader_div_tag is not None else ''
-                            update_time = '' if not update_time_and_uploader_list or len(update_time_and_uploader_list) < 1 else update_time_and_uploader_list[0]
-                            uploader = '' if not update_time_and_uploader_list or len(update_time_and_uploader_list) < 2 else update_time_and_uploader_list[1]
+                        for current_page_video_count, current_video_items in enumerate(video_main_div_tag, 1):
+                            video_items_outer_div_tag = current_video_items.find('div', {'class': 'g dFd2Tb'})
+                            video_items_first_div_tag = video_items_outer_div_tag.find('div', {'class': 'ct3b9e'})
+                            if video_items_first_div_tag is not None:
+                                title_h3_tag = video_items_first_div_tag.find('h3', {'class': 'LC20lb MBeuO DKV0Md'})
+                                title = title_h3_tag.getText().strip().replace('\n\r', '')
+                                video_a_tag = video_items_first_div_tag.find('a')
+                                link = video_a_tag['href'] if video_a_tag is not None else ''
+                            else:
+                                title = ''
+                                link = ''
+                            video_items_second_div_tag = video_items_outer_div_tag.find('div', {'class': 'dXiKIc'})
+                            if video_items_second_div_tag is not None:
+                                video_time_div_tag = video_items_second_div_tag.find('div', {'class': 'J1mWY'})
+                                video_time = video_time_div_tag.find('div').get_text().strip() if video_time_div_tag else ''
+                            else:
+                                video_time = ''
+                            video_items_third_div_tag = video_items_outer_div_tag.find('div', {'class': 'mSA5Bd'})
+                            summary_tag = video_items_third_div_tag.find('div', {'class': 'Uroaid'})
+                            summary = summary_tag.getText().strip().replace('\n\r', '')if summary_tag is not None else ''
+                            uploader_and_update_time_tag = video_items_third_div_tag.find('div', {'class': 'P7xzyf'})
+                            uploader_and_update_time_span_tag = uploader_and_update_time_tag.find_all('span') if uploader_and_update_time_tag is not None else None
+                            if uploader_and_update_time_span_tag is not None:
+                                uploader = uploader_and_update_time_span_tag[1].getText().strip().replace('\n\r', '')
+                                update_time = uploader_and_update_time_span_tag[2].getText().strip().replace('\n\r', '')
+                            else:
+                                uploader = ''
+                                update_time = ''
                             temp_list = [title, summary, update_time, link, video_time, uploader, page_count]
                             if any(temp_list) is True and link:
                                 current_info_dict.append(dict(zip(info_columns, temp_list)))
@@ -171,117 +187,6 @@ class GoogleSearchInfo():
                                 logger.error(f'Found empty in current page {page_count} the {current_page_video_count} data')
                 info.extend(list({v['title']:v for v in current_info_dict}.values()))
             logger.info("Finish get video information from page source")
-        except Exception as e:
-            logger.error(HandleException.show_exp_detail_message(e))
-        return info
-
-    def __get_shopping(self, page_source_list):
-        info = []
-        all_commodities_main_div_dict = {
-            'grid': 'v7W49e',
-            'list': 'QNox7c'
-        }
-
-        try:
-            logger.info(f'Will load source page total: {len(page_source_list)}')
-            info_columns = ['name', 'price', 'platform', 'free shipping option', 'url', 'search_page']
-            logger.info("Starting get shopping information from page source")
-            for page_count, page_source in enumerate(page_source_list, 1):
-                current_info_dict = []
-                if page_source is None:
-                    raise Exception("Load static page source failed")
-                logger.info(f"Current page is: {page_count}")
-
-                with AnalysisData(page_source, 'html.parser') as soup:
-                    search_div_tag = soup.find('div', {'id': 'search'})
-                    find_target_key = ''
-
-                    if search_div_tag is not None:
-                        for tag_key, tag_val in all_commodities_main_div_dict.items():
-                            commodities_div_tag = search_div_tag.find('div', {'class': tag_val})
-                            if commodities_div_tag is not None:
-                                find_target_key = tag_key
-                                break
-                    else:
-                        raise ValueError("Search page load failed, please check element valid.")
-
-                    # logger.debug(search_div_tag)
-
-                    if commodities_div_tag is None:
-                        raise ValueError("Not found any commodities main div tag.")
-
-                    all_commodities_inner_div_dict = {
-                        'grid': 'sh-pr__product-results-grid sh-pr__product-results',
-                        'list': 'sh-sr__shop-result-group Qlx7of BXIkFb'
-                    }
-                    all_commodities_top_div_tag = commodities_div_tag.find('div', {'class': all_commodities_inner_div_dict[find_target_key]})
-                    # logger.debug(all_commodities_top_div_tag)
-
-                    if not find_target_key or all_commodities_top_div_tag is None or any(all_commodities_top_div_tag) is False:
-                        logger.error(f'No div tag found: {all_commodities_top_div_tag}')
-                    elif find_target_key and find_target_key == 'grid':
-                        logger.warning('load grid tag.')
-                        all_commodities_inner_div_tag = all_commodities_top_div_tag.find_all('div', {'class': 'i0X6df'})
-                        # logger.info(f'all commodities inner div tag list count: {len(all_commodities_inner_div_tag)}')
-                        # logger.debug(all_commodities_inner_div_tag)
-                        for current_page_commodity_count, current_commodity_tag in enumerate(all_commodities_inner_div_tag, 1):
-                            commodity_inner_div = current_commodity_tag.find('div', {'class': 'sh-dgr__content'})
-                            # logger.debug(commodity_inner_div)
-                            if commodity_inner_div is not None:
-                                commodity_name_and_link_tag = commodity_inner_div.find('span', {'class': 'C7Lkve'})
-                                commodity_first_a_tag = commodity_name_and_link_tag.find('a', {'class': 'Lq5OHe eaGTj translate-content'})
-                                commodity_name_tag = commodity_first_a_tag.find('h4', {'class': 'Xjkr3b'})
-                                commodity_name = commodity_name_tag.getText() if commodity_name_tag is not None else ''
-                                commodity_other_items_tag = commodity_inner_div.find('div', {'class': 'zLPF4b'})
-                                commodity_link_span_tag = commodity_other_items_tag.find('span', {'class': 'eaGTj mQaFGe shntl'})
-                                # logger.warning(commodity_link_span_tag)
-                                commodity_link = self.__base_url.strip('/') + commodity_link_span_tag.find('a', {'class': 'shntl'})['href'] if commodity_link_span_tag is not None else 'null'
-                                commodity_price = self.__filter_duplicate_items('[.00|,|NT$|$| + tax]', commodity_inner_div.find('span', {'class': 'a8Pemb OFFNJ'}).getText())
-                                commodity_buy_platform = commodity_other_items_tag.find('div', {'class': 'aULzUe IuHnof'}).getText() if commodity_other_items_tag is not None else ''
-                                commodity_free_shipping_option = commodity_other_items_tag.find('div', {'class': 'bONr3b'}).getText() if commodity_other_items_tag is not None else ''
-
-                                temp_list = [commodity_name, commodity_price, commodity_buy_platform, commodity_free_shipping_option, commodity_link, page_count]
-                                if any(temp_list) is True:
-                                    current_info_dict.append(dict(zip(info_columns, temp_list)))
-                                else:
-                                    logger.error(f'Found empty in current page {page_count} the {current_page_commodity_count} data')
-                            else:
-                                logger.error(f'not found any commodities info.')
-                        info.extend(list({v['name']:v for v in current_info_dict}.values()))
-                    elif find_target_key and find_target_key == 'list':
-                        logger.warning('load list tag.')
-                        all_commodities_inner_div_tag = all_commodities_top_div_tag.find_all('div', {'class': 'ZGFjDb'})
-                        logger.info(f'all commodities inner div tag list count: {len(all_commodities_inner_div_tag)}')
-                        for current_page_commodity_count, current_commodity_tag in enumerate(all_commodities_inner_div_tag[1:], 1):
-                            commodity_inner_div = current_commodity_tag.find('div', {'class': 'ZGFjDb'})
-                            commodity_name_and_link_tag = commodity_inner_div.find('div', {'class': 'LNwFVe'}) if commodity_inner_div is not None else None
-                            commodity_first_a_tag = commodity_name_and_link_tag.find('a', {'class': 'VZTCjd translate-content'}) if commodity_name_and_link_tag is not None else None
-                            # commodity_link = self.__base_url.strip('/') + commodity_first_a_tag['href'] if commodity_first_a_tag is not None else ''
-                            commodity_name_h3_tag = commodity_first_a_tag.find('h3', {'class': 'OzIAJc'}) if commodity_first_a_tag is not None else None
-                            commodity_name = commodity_name_h3_tag.getText() if commodity_name_h3_tag is not None else ''
-                            commodity_other_items_tag = commodity_inner_div.find('div', {'class': 'm31woc'}) if commodity_inner_div is not None else None
-                            commodity_second_a_tag = commodity_other_items_tag.find('a', {'class': 'LBbJwb shntl'}) if commodity_other_items_tag is not None else None
-                            commodity_link = self.__base_url.strip('/') + commodity_second_a_tag['href'] if commodity_second_a_tag is not None else ''
-                            commodity_price_span_tag = commodity_second_a_tag.find('span', {'class': 'a8Pemb OFFNJ'})
-                            # commodity_price = commodity_price_span_tag.getText().replace('.00', '').replace(',', '').strip('NT$').strip('$') if commodity_price_span_tag is not None else ''
-                            commodity_price = self.__filter_duplicate_items('[.00|,|NT$|$| + tax]', commodity_price_span_tag.getText()) if commodity_price_span_tag is not None else ''
-                            commodity_buy_platform_div_tag = commodity_other_items_tag.find('div', {'class': 'b07ME mqQL1e'}) if commodity_other_items_tag is not None else None
-                            commodity_buy_platform = commodity_buy_platform_div_tag.getText() if commodity_buy_platform_div_tag is not None else ''
-                            commodity_free_shipping_option_div = commodity_other_items_tag.find('div', {'class': 'vEjMR'}) if commodity_other_items_tag is not None else None
-                            commodity_free_shipping_option = commodity_free_shipping_option_div.getText() if commodity_free_shipping_option_div is not None else ''
-                            temp_list = [commodity_name, commodity_price, commodity_buy_platform, commodity_free_shipping_option, commodity_link, page_count]
-                            # logger.info(temp_list)
-                            if any(temp_list) is True:
-                                current_info_dict.append(dict(zip(info_columns, temp_list)))
-                            else:
-                                logger.error(f'Found empty in current page {page_count} the {current_page_commodity_count} data')
-                            logger.info(f'Commodity name is: {commodity_name}\nCommodity link is: {commodity_link}')
-                            logger.info('-------------------------------------------------------')
-                        info.extend(list({v['name']:v for v in current_info_dict}.values()))
-                    else:
-                        logger.info('other state')
-            info = sorted(info, key=lambda x: x['search_page'], reverse=False)
-            logger.info(f"Finish get shopping information from {find_target_key} of page source")
         except Exception as e:
             logger.error(HandleException.show_exp_detail_message(e))
         return info
@@ -305,13 +210,11 @@ class GoogleSearchInfo():
                     search_type = search_params_list[0]
                 elif self.__search_type == 'video':
                     search_type = search_params_list[1]
-                elif self.__search_type == 'shopping':
-                    search_type = search_params_list[2]
                 else:
-                    raise Exception("Not mathch search type option.")
+                    raise Exception("No match search type option.")
 
+                #TODO 定義 Google 搜尋的關鍵字與搜尋種類 (如: 新聞, 影片)
                 search_condition = f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}&hl={country_code_list[0]}'
-                # search_condition = f'{self.__base_url}/search?q={self.__keyword}&tbm={search_type}'
                 logger.debug(f'search condition: {search_condition}')
                 d.get(search_condition)
 
@@ -344,8 +247,6 @@ class GoogleSearchInfo():
                 result = self.__get_news(page_source_list)
             elif self.__search_type == 'video':
                 result = self.__get_video(page_source_list)
-            elif self.__search_type == 'shopping':
-                result = self.__get_shopping(page_source_list)
 
             if any(result) is True:
                 try:
@@ -377,9 +278,7 @@ def init_global():
 
 def run_job():
     init_global()
-
     task_job = []
-
     for task in Init.crawler_target_list:
         logger.info(f"Init task {task}")
         if task[1] in Init.search_type_list:
@@ -400,6 +299,7 @@ def run_job():
 if __name__ == '__main__':
     try:
         run_job()
+        os.system("pause")
     except Exception as e:
         logger.error(HandleException.show_exp_detail_message(e))
     except KeyboardInterrupt:
